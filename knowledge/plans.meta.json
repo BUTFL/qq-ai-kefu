@@ -1,0 +1,9 @@
+{
+  "url": "https://api.lmuai.ai/api/v1/payment/public/plans",
+  "page": "https://api.lmuai.ai/purchase",
+  "fetched_at": "2026-10-28 07:23:03",
+  "sha256": "d41ea4df2b3fc355c44c8591471841a7b08074c1c55bbc944bba294fa60abd9c",
+  "plans": 35,
+  "domestic": 17,
+  "chars": 10018
+}

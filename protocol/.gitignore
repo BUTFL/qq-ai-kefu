@@ -1,0 +1,9 @@
+node_modules/
+.DS_Store
+*.log
+.env
+config/rosmontis.json
+config/rosmontis_*.json
+config/onebot.json
+config/onebot_*.json
+!config/*.example.json

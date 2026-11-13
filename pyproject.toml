@@ -1,0 +1,26 @@
+[project]
+name = "qq-customer-bot"
+version = "0.0.1"
+description = "QQ 群客服机器人：NapCat(OneBot 11) + 自写 WebSocket 客户端 + AI 问答"
+requires-python = ">=3.12"
+dependencies = [
+    # OneBot 11 正向 WebSocket 客户端，asyncio 原生
+    "websockets>=13",
+    # 从 .env 读令牌和配置，不把密钥写进代码
+    "python-dotenv>=1.0",
+    # 调中转站的 HTTP 客户端。要 asyncio 原生（问答在事件循环里跑，不能用阻塞的 urllib）
+    "httpx>=0.27",
+    # 资料导入：pdf 和 word。两个都是纯 Python，不会踩本机 macOS 12 编译 wheel 的坑
+    "pypdf>=5",
+    "python-docx>=1.1",
+    "aiohttp==3.12.15",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+]
+
+# 向量检索故意没用 numpy：实测 1024 维点积纯 Python 约 30μs，
+# 上千个切块也就几十毫秒，且检索整段包在 to_thread 里不挡事件循环。
+# 为它多一个要编译的依赖不值得（本机 macOS 12 装带 C 扩展的包经常出事）。

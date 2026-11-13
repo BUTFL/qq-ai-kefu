@@ -1,0 +1,49 @@
+# ── 机密 / 运行时状态：永不提交 ──────────────────────────────
+.env
+*.env.local
+.env.bak*
+
+# 运行时数据库与业务数据（示例知识库 data/知识库.md 保留，其余忽略）
+data/*.db
+data/*.db-shm
+data/*.db-wal
+data/用量*
+data/上传原件/
+data/知识库.备份-*
+data/知识库.手改未同步-*
+
+# 登录态 / 二维码
+napcat/
+protocol/docker/data/
+protocol/docker/.env
+*qrcode*.png
+qr_login.png
+
+# 日志（保留空目录）
+logs/*
+!logs/.gitkeep
+*.log
+
+# 备份（保留空目录）
+backup/*
+!backup/.gitkeep
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Node（protocol / Rosmontis）
+node_modules/
+protocol/node_modules/
+
+# 备份/临时
+*.bak
+*.bak-*
+*.sb
+*.scrubbak
+
+# OS
+.DS_Store
+Thumbs.db

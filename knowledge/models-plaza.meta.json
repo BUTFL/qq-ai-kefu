@@ -1,0 +1,22 @@
+{
+  "url": "https://api.lmuai.com/models",
+  "fetched_at": "2026-10-30 07:23:11",
+  "sha256": "7472a2571150d4ea283cdc42a38ee94ba8e72d264cc25f0c783e60e395c31af4",
+  "models": 135,
+  "rendered_rows": 136,
+  "vendors": 11,
+  "chars": 8467,
+  "vendor_counts": {
+    "anthropic": 18,
+    "deepseek": 3,
+    "doubao": 1,
+    "google": 21,
+    "grok": 6,
+    "minimax": 8,
+    "moonshot": 8,
+    "openai": 44,
+    "qwen": 15,
+    "xiaomi": 5,
+    "zhipu": 6
+  }
+}

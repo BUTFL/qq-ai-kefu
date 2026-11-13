@@ -1,0 +1,14 @@
+{
+  "name": "qq",
+  "version": "3.2.32-52194",
+  "buildVersion": "52194",
+  "private": true,
+  "description": "Linux QQ package.json patch metadata for NTQQ Renderer-Layer OneBot v11 Bridge",
+  "main": "./app_launcher/index.js",
+  "original_main": "./application.asar/app_launcher/index.js",
+  "appid": {
+    "linux": "537376650"
+  },
+  "author": "Tencent",
+  "license": "SEE LICENSE IN LICENSE"
+}

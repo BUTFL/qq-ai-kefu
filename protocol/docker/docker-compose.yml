@@ -1,0 +1,37 @@
+services:
+  rosmontis:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      args:
+        QQ_DEB_URL: ${QQ_DEB_URL:-}
+        QQ_DEB_SHA256: ${QQ_DEB_SHA256:-}
+        REQUIRE_QQ_DEB_SHA256: ${REQUIRE_QQ_DEB_SHA256:-0}
+    container_name: rosmontis
+    restart: unless-stopped
+    shm_size: 1gb
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      - TZ=${TZ:-Asia/Shanghai}
+      - VNC_PASSWD
+      - ROSMONTIS_EXPOSE_RAW_VNC
+      - ROSMONTIS_HTTP_ENABLE
+      - ROSMONTIS_HTTP_PORT=${ROSMONTIS_HTTP_PORT:-3000}
+      - ROSMONTIS_WS_PORT=${ROSMONTIS_WS_PORT:-3001}
+      - ROSMONTIS_REVERSE_WS_URL
+      - ROSMONTIS_ACCESS_TOKEN
+      - ROSMONTIS_ENABLE_WEB_CREDENTIAL_API
+    ports:
+      # Bind to localhost by default; expose via SSH tunnel or authenticated reverse proxy
+      - "127.0.0.1:3000:3000"
+      - "127.0.0.1:3001:3001"
+      - "127.0.0.1:6081:6081"
+    volumes:
+      - rosmontis-qq-config:/app/.config
+      - rosmontis-qq-share:/app/.local/share
+      - ./data:/app/data
+
+volumes:
+  rosmontis-qq-config:
+  rosmontis-qq-share:

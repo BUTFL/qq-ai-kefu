@@ -1,0 +1,24 @@
+{
+  "name": "rosmontis",
+  "version": "1.0.0",
+  "description": "Zero-hook, pure-JS Electron Renderer-Layer OneBot v11 bridge for Linux QQ NT",
+  "main": "src/bridge_main.js",
+  "scripts": {
+    "test": "node test/test_bridge.js && node test/test_media_security.js && node test/test_core_modules.js"
+  },
+  "keywords": [
+    "onebot",
+    "onebot-v11",
+    "ntqq",
+    "qqnt",
+    "electron",
+    "renderer-bridge",
+    "zero-hook",
+    "rosmontis"
+  ],
+  "author": "lingr25",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "url": "https://api.lmuai.ai/api/v1/model-plaza",
+  "page": "https://api.lmuai.ai/model-plaza",
+  "fetched_at": "2026-11-10 07:23:09",
+  "sha256": "1ef2e76fd5a876f47a9f73a1eae28cef34a456d2ca1c4d7ca92dced19eecfba8",
+  "plaza_groups": 22,
+  "groups": 27,
+  "chars": 1163
+}

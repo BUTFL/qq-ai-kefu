@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        node-version: [18, 20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Verify zero runtime npm dependencies
+        run: |
+          node -e '
+            const pkg = require("./package.json");
+            if (pkg.dependencies && Object.keys(pkg.dependencies).length > 0) {
+              throw new Error("Rosmontis must remain zero-dependency pure JS");
+            }
+          '
+      - name: Check shell scripts syntax
+        run: |
+          bash -n scripts/install_bridge.sh
+          bash -n scripts/entrypoint.sh
+      - name: Run unit & protocol contract tests
+        run: npm test

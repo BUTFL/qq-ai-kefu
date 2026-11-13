@@ -1,0 +1,50 @@
+{
+  "humanSimulation": true,
+  "autoReadAndTypeOnPrivateRecv": false,
+  "autoReadReactionDelayMs": [500, 1800],
+  "aioSwitchCooldownMs": 800,
+  "humanReadToTypingDelayMs": 0,
+  "aioIdleExitMs": 45000,
+  "focusIdleBlurMs": 300000,
+  "sendEchoTimeoutMs": 3000,
+  "richMediaEchoTimeoutMs": 15000,
+  "compatProfile": "rosmontis",
+  "enableWebCredentialApi": false,
+  "allowedOrigins": [],
+  "networks": {
+    "httpServers": [
+      {
+        "enable": true,
+        "name": "http-main",
+        "host": "127.0.0.1",
+        "port": 3000,
+        "accessToken": "",
+        "messageFormat": "array",
+        "compatProfile": "rosmontis",
+        "reportSelfMessage": false
+      }
+    ],
+    "wsServers": [
+      {
+        "enable": true,
+        "name": "ws-main",
+        "host": "127.0.0.1",
+        "port": 3001,
+        "accessToken": "",
+        "messageFormat": "array",
+        "reportSelfMessage": false
+      }
+    ],
+    "wsClients": [
+      {
+        "enable": false,
+        "name": "reverse-ws",
+        "url": "ws://127.0.0.1:8080/onebot/v11/ws",
+        "accessToken": "",
+        "messageFormat": "array",
+        "reportSelfMessage": false,
+        "reconnectIntervalMs": 5000
+      }
+    ]
+  }
+}

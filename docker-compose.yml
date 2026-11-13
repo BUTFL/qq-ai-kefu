@@ -1,0 +1,89 @@
+# qq-ai-kefu 一键编排：protocol(Rosmontis 协议端) + bot(客服机器人) + lan(局域网入口)
+#
+# 首次使用：
+#   cp .env.example .env           # 填好配置（至少 QQ_ACCOUNT / ROSMONTIS_ACCESS_TOKEN / ONEBOT_TOKEN / LLM_* / ENABLED_GROUPS / SUPER_ADMINS / ADMIN_PASSWORD）
+#   docker compose up -d --build   # 首次会构建 protocol(装官方QQ,几分钟) 和 bot
+#   # 扫码登录：浏览器开 http://127.0.0.1:6081 （noVNC，密码=VNC_PASSWD），看到 QQ 窗口扫码
+#
+# 端口默认只绑 127.0.0.1；要局域网访问见 lan 服务 + .env 的 LAN_IP。
+# RK3588 / arm64 原生支持：protocol 的 Dockerfile 按架构自动装 arm64 版官方 QQ。
+# 国内构建慢/卡 fonts-noto-cjk：把 protocol/docker/Dockerfile 的 ports.ubuntu.com 换成国内源，见 docs/deploy-rk3588.zh.md。
+
+services:
+  # ── 协议端：Rosmontis（零注入渲染层，跑官方原版 Linux QQ，输出 OneBot v11）────────
+  protocol:
+    build:
+      context: ./protocol
+      dockerfile: docker/Dockerfile
+    container_name: qqkefu-protocol
+    restart: unless-stopped
+    shm_size: 1gb
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      - TZ=Asia/Shanghai
+      - ROSMONTIS_ACCESS_TOKEN=${ROSMONTIS_ACCESS_TOKEN:?请在 .env 设置}
+      - ROSMONTIS_HTTP_PORT=3000
+      - ROSMONTIS_WS_PORT=3001
+      - ROSMONTIS_ENABLE_WEB_CREDENTIAL_API=0   # 关闭高危 Cookie/SKey 提取接口
+      - AUTO_LOGIN_QQ=${QQ_ACCOUNT:-}           # 登录态在时重启免扫码
+      - VNC_PASSWD=${VNC_PASSWD:-}              # 设了才开 noVNC(6081) 扫码桌面
+    ports:
+      - "127.0.0.1:3000:3000"   # OneBot v11 HTTP API
+      - "127.0.0.1:6081:6081"   # noVNC 扫码桌面（设 VNC_PASSWD 后可用）
+    volumes:
+      - protocol-qq-config:/app/.config         # QQ 登录态（删了要重扫码）
+      - protocol-qq-share:/app/.local/share
+      - ./protocol/docker/data:/app/data        # Rosmontis 设备身份/会话
+
+  # ── 机器人本体：Python 客服逻辑，连 protocol 的 OneBot WS ────────────────────────
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: qqkefu-bot
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    user: "${NAPCAT_UID:-1000}:${NAPCAT_GID:-1000}"
+    environment:
+      - ONEBOT_URL=ws://protocol:3001          # 容器内网按服务名连协议端
+      - WEBUI_URL=http://protocol:3000
+      - WEBUI_PUBLIC_URL=http://127.0.0.1:3000
+      - ADMIN_HOST=0.0.0.0
+      - MAC_NOTIFY=false
+      - LAN_HOSTS=${LAN_IP:-}
+      - BACKUP_DIR=/app/backup
+    ports:
+      - "127.0.0.1:8090:8090"   # 知识库控制台接口
+    volumes:
+      - ./.env:/app/.env:ro      # 先 cp .env.example .env，否则这里挂载会失败
+      - ./data:/app/data
+      - ./knowledge:/app/knowledge
+      - ./logs:/app/logs
+      - ./backup:/app/backup
+    # 故意不写 depends_on：onebot.py 自带指数退避重连，protocol 后起也会自己连上
+
+  # ── 局域网入口（可选）：把 LAN_IP 的 3000/8090 原样转给 protocol/bot ───────────────
+  lan:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: qqkefu-lan
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    user: "${NAPCAT_UID:-1000}:${NAPCAT_GID:-1000}"
+    command: ["python", "scripts/lan_proxy.py", "3000=protocol:3000", "8090=bot:8090"]
+    ports:
+      # LAN_IP 没填就落到 127.0.0.2（等于没开，不跟 127.0.0.1 撞）
+      - "${LAN_IP:-127.0.0.2}:3000:3000"
+      - "${LAN_IP:-127.0.0.2}:8090:8090"
+
+volumes:
+  protocol-qq-config:
+  protocol-qq-share:
