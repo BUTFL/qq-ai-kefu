@@ -72,11 +72,129 @@ export interface FetchResult {
   error?: string;
 }
 
-/** 侧栏只需要条数，草稿正文下一轮才用。 */
+export interface DraftOption {
+  /** 「贴近原话」「简短」「完整」。老草稿可能是空串。 */
+  label: string;
+  answer: string;
+}
+
+export interface DraftImage {
+  id: number;
+  url: string;
+  caption: string;
+}
+
+/** kind：new 新答案 / alias 给已有答案加问法 / merge 合并两条 */
+export interface Draft {
+  id: number;
+  kind: string;
+  entry_id: number | null;
+  merge_from: number | null;
+  question: string;
+  answer: string;
+  options: DraftOption[];
+  aliases: string[];
+  evidence: string;
+  note: string;
+  created_at: string;
+  source_url: string;
+  images: DraftImage[];
+}
+
 export interface DraftListResponse {
-  drafts: { id: number }[];
+  drafts: Draft[];
   /** reviews 表里 summary / error 可能是 NULL，后端原样透传。 */
   review: { at: string; summary: string | null; error: string | null } | null;
+}
+
+export interface DraftActionResponse {
+  ok: true;
+  message: string;
+}
+
+export interface LearnReadResponse {
+  name: string;
+  text: string;
+}
+
+export interface LearnAnalyzeResponse {
+  drafts: Draft[];
+  skipped: string[];
+}
+
+/** state：running 在爬 / done 爬完了 / stopped 停了 / failed 出错 */
+export interface CrawlJob {
+  id: number;
+  url: string;
+  state: string;
+  max_pages: number;
+  pages: number;
+  found: number;
+  drafts: number;
+  images: number;
+  replaced: string[];
+  log: string;
+  error: string;
+  created_at: string;
+  finished_at: string;
+  /** 队列里还剩几个网址没爬 */
+  pending: number;
+  can_resume: boolean;
+}
+
+export interface CrawlListResponse {
+  running: boolean;
+  jobs: CrawlJob[];
+}
+
+/** kind：售前 / 售后 / 日报群。admin 是 null 表示没查出来。 */
+export interface Group {
+  group_id: number;
+  name: string;
+  members: number;
+  kind: string;
+  admin: boolean | null;
+}
+
+export interface GroupsResponse {
+  groups: Group[];
+}
+
+/** 一个群一个群发，每个群各自成败。 */
+export interface SendResult {
+  group_id: number;
+  name: string;
+  ok: boolean;
+  error?: string;
+}
+
+export interface SendResponse {
+  results: SendResult[];
+}
+
+export interface AtAllRemain {
+  can?: boolean;
+  group?: number | null;
+  self?: number | null;
+  left?: number | null;
+  error?: string;
+}
+
+export interface AtAllRemainResponse {
+  remain: Record<string, AtAllRemain>;
+}
+
+export interface GroupNotice {
+  notice_id: string;
+  text: string;
+  images: number;
+  sender_id: number | null;
+  publish_time: string;
+  read_num: number | null;
+}
+
+export interface NoticesResponse {
+  notices: GroupNotice[];
 }
 
 export interface TrustedResponse {

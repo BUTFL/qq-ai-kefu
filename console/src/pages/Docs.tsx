@@ -354,7 +354,7 @@ export default function Docs() {
                 {fetching ? '抓取中…' : '抓取'}
               </button>
             </div>
-            <span className="m dim" style={{ lineHeight: 1.7 }}>
+            <span className="m dim wrap">
               输网址回车就抓这一页的文字当资料（不会顺着链接爬整站）。几个网址一行一个，同一个网址再抓一次是更新。别家平台的文档会自动改成灵眸的：名称、网址、注册和控制台换成我们的，别家的价格政策删掉。要登录、或者要浏览器跑
               JS 才出内容的页面抓不到
             </span>

@@ -5,10 +5,12 @@
   box-sizing: border-box;
 }
 
+/* 真应用铺满窗口：设计稿那份是文档（页头 + 框住的示意图），别把它的
+   max-width / 上下留白搬过来，不然就是一个盒子浮在左上角、四周一圈底色。 */
 html,
 body,
 #root {
-  min-height: 100%;
+  height: 100%;
 }
 
 body {
@@ -17,9 +19,8 @@ body {
   color: var(--ink);
   font: 15px/1.65 var(--sans);
   -webkit-font-smoothing: antialiased;
-  padding-left: max(16px, env(safe-area-inset-left, 0px));
-  padding-right: max(16px, env(safe-area-inset-right, 0px));
-  padding-block: clamp(18px, 3.2vw, 38px);
+  /* 侧栏和顶栏要贴边，左右安全区留白交给里面的 .pane 和 .rail */
+  padding: 0;
 }
 
 button,
@@ -60,8 +61,7 @@ code {
 /* ---- 外框：左 212px 索引栏 + 顶栏 + 内容区 ---- */
 .console {
   width: 100%;
-  max-width: 1140px;
-  margin: 0 auto;
+  height: 100%;
   min-width: 0;
 }
 
@@ -69,8 +69,8 @@ code {
   display: grid;
   grid-template-columns: 212px minmax(0, 1fr);
   min-width: 0;
+  height: 100%;
   background: var(--panel);
-  border: 1px solid var(--rule);
 }
 
 .rail {
@@ -78,8 +78,11 @@ code {
   flex-direction: column;
   min-width: 0;
   padding: 14px 0 0;
+  padding-left: env(safe-area-inset-left, 0px);
   background: var(--panel-2);
   border-right: 1px solid var(--rule);
+  /* 窗口矮的时候索引栏自己滚，别把品牌和页脚挤没 */
+  overflow-y: auto;
 }
 
 .brand {
@@ -178,6 +181,9 @@ code {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  /* 顶栏钉住，只有内容区滚 */
+  height: 100%;
+  overflow: hidden;
 }
 
 .topbar {
@@ -186,7 +192,9 @@ code {
   flex-wrap: wrap;
   gap: 8px 20px;
   padding: 11px 18px;
+  padding-right: max(18px, env(safe-area-inset-right, 0px));
   border-bottom: 1px solid var(--rule);
+  flex: none;
 }
 
 .topbar h2 {
@@ -268,6 +276,17 @@ code {
 .page {
   min-width: 0;
   padding: 18px;
+  padding-right: max(18px, env(safe-area-inset-right, 0px));
+  padding-bottom: max(18px, env(safe-area-inset-bottom, 0px));
+  /* 内容在这儿滚，顶栏和侧栏不动 */
+  flex: 1;
+  overflow-y: auto;
+  /* 页内所有块（说明、卡片、草稿卡）统一一个间距。
+     别在 .note / .card / .draft 上各自加 margin —— 那样卡片接草稿卡会变成 0。 */
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-content: start;
 }
 
 .page-head {
@@ -285,7 +304,7 @@ code {
 }
 
 .note {
-  margin: 0 0 16px;
+  margin: 0;
   padding: 10px 13px;
   border-left: 3px solid var(--ink-3);
   background: var(--panel-2);
@@ -319,10 +338,6 @@ code {
   min-width: 0;
   border: 1px solid var(--rule);
   background: var(--panel);
-}
-
-.card + .card {
-  margin-top: 18px;
 }
 
 .ch {
@@ -938,10 +953,6 @@ button.link:disabled {
   grid-template-columns: minmax(0, 1fr) 232px;
 }
 
-.draft + .draft {
-  margin-top: 14px;
-}
-
 .draft .main {
   padding: 14px 15px;
   display: flex;
@@ -1301,7 +1312,9 @@ button.link:disabled {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: calc(100vh - 2 * clamp(18px, 3.2vw, 38px));
+  /* body 不再有上下留白，这儿直接占满窗口 */
+  min-height: 100%;
+  padding: 24px max(16px, env(safe-area-inset-left, 0px));
 }
 
 .login-card {
@@ -1350,13 +1363,17 @@ button.link:disabled {
 /* ---- 窄屏：索引栏收成横向标签条 ---- */
 @media (max-width: 860px) {
   .frame {
+    /* 一列：导航条按内容高，剩下全给内容区 */
     grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
   }
 
   .rail {
     padding: 0;
+    padding-left: 0;
     border-right: 0;
     border-bottom: 1px solid var(--rule);
+    overflow-y: visible;
   }
 
   .brand,
@@ -1444,3 +1461,47 @@ textarea:focus-visible,
   outline: 2px solid var(--seal);
   outline-offset: 2px;
 }
+
+/* ---- 六页补的（Kiro 手写那一轮）---- */
+.field.grow-1 { flex: 1; min-width: 160px; }
+.field.narrow-md { max-width: 320px; }
+.m.wrap, .note .m.wrap, p.m.wrap { white-space: normal; line-height: 1.7; }
+
+/* 自己人：.env 定死的那几行混在表里排最上 */
+tr.row-fixed { background: var(--panel-2); }
+tr.row-fixed td { color: var(--ink-2); }
+
+/* 草稿卡右栏的按钮区 */
+.side-acts { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+/* 草稿的爬来截图：点着切「带上 / 不带」 */
+.thumb-pick {
+  all: unset; cursor: pointer; position: relative; display: flex; flex-direction: column;
+  border: 2px solid var(--rule); max-width: 168px; opacity: .45; transition: opacity .12s, border-color .12s;
+}
+.thumb-pick:hover { border-color: var(--ink-3); }
+.thumb-pick.on { border-color: var(--seal); opacity: 1; }
+.thumb-img { width: 164px; height: 112px; object-fit: cover; display: block; }
+.thumb-state {
+  position: absolute; top: 4px; left: 4px; background: var(--ink); color: var(--panel);
+  font: 500 10.5px/1.5 var(--mono); padding: 1px 5px;
+}
+.thumb-pick .cap { padding: 4px 6px; text-align: left; }
+
+/* 群公告：开关行、@全体剩余次数、四个标签页 */
+.sw-row { display: flex; gap: 11px; flex-wrap: wrap; }
+.sw-row .sw { flex: 1; min-width: 210px; }
+.remain-row {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 7px 0; border-bottom: 1px solid var(--rule-2);
+}
+.remain-row:last-child { border-bottom: 0; }
+.ch.tabs { gap: 0; padding: 0; }
+.card.tabbed > .ch.tabs { background: var(--panel-2); }
+.ntab[aria-selected='true'] { color: var(--ink); border-bottom-color: var(--ink); background: var(--panel); }
+
+/* 拖拽区悬停 */
+.drop.over { border-color: var(--ink-2); background: var(--panel-3); }
+
+/* 草稿里的多说法单选组：跟上面的问题隔开一点 */
+.form-stack.opts { margin-top: 8px; }
