@@ -1,0 +1,63 @@
+/* 设计 token：颜色只在这里定义，别处一律 var(--x)。 */
+:root {
+  --paper: #f1f3f2;
+  --panel: #ffffff;
+  --panel-2: #f8f9f8;
+  --panel-3: #eceeed;
+  --ink: #15181a;
+  --ink-2: #575f64;
+  --ink-3: #868e8c;
+  --rule: #d8dcda;
+  --rule-2: #e8ebe9;
+  --seal: #b3351c;
+  --seal-weak: #faece8;
+  --on-seal: #ffffff;
+  --jade: #156b57;
+  --jade-weak: #e6f2ee;
+  --amber: #84570a;
+  --amber-weak: #fbf2df;
+  --sans: "IBM Plex Sans","PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+  --mono: "IBM Plex Mono",ui-monospace,"SF Mono",Menlo,"PingFang SC",monospace;
+}
+
+@media (prefers-color-scheme:dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #101312;
+    --panel: #171a19;
+    --panel-2: #1d211f;
+    --panel-3: #242827;
+    --ink: #e9ebe9;
+    --ink-2: #9aa29e;
+    --ink-3: #6b7370;
+    --rule: #2b302e;
+    --rule-2: #212524;
+    --seal: #ee7254;
+    --seal-weak: #2c1b16;
+    --on-seal: #1b100c;
+    --jade: #4fb795;
+    --jade-weak: #13231e;
+    --amber: #d6a447;
+    --amber-weak: #261f10;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --paper: #101312;
+  --panel: #171a19;
+  --panel-2: #1d211f;
+  --panel-3: #242827;
+  --ink: #e9ebe9;
+  --ink-2: #9aa29e;
+  --ink-3: #6b7370;
+  --rule: #2b302e;
+  --rule-2: #212524;
+  --seal: #ee7254;
+  --seal-weak: #2c1b16;
+  --on-seal: #1b100c;
+  --jade: #4fb795;
+  --jade-weak: #13231e;
+  --amber: #d6a447;
+  --amber-weak: #261f10;
+  color-scheme: dark;
+}
