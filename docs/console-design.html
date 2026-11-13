@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>qq-ai-kefu · 客服控制台 设计稿</title>
+<style>
+  :root{
+    --bg:#f4f6fb; --panel:#ffffff; --ink:#1b2130; --sub:#6b7488; --line:#e7eaf1;
+    --brand:#4f6ef2; --brand-weak:#eef1fe; --ok:#16a34a; --warn:#d97706; --danger:#e11d48;
+    --sidebar:#161a26; --sidebar-ink:#c7cdda; --sidebar-active:#4f6ef2;
+    --radius:14px; --shadow:0 1px 2px rgba(20,25,40,.04),0 8px 24px rgba(20,25,40,.06);
+  }
+  *{box-sizing:border-box} html,body{margin:0;height:100%}
+  body{font:14px/1.6 -apple-system,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+       background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased}
+  .app{display:grid;grid-template-columns:232px 1fr;height:100vh}
+  /* 侧栏 */
+  .side{background:var(--sidebar);color:var(--sidebar-ink);display:flex;flex-direction:column;padding:18px 12px}
+  .brand{display:flex;align-items:center;gap:10px;padding:6px 10px 18px;color:#fff;font-weight:700;font-size:16px;letter-spacing:.3px}
+  .brand .logo{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#4f6ef2,#7c3aed);display:grid;place-items:center;font-size:15px}
+  .nav{display:flex;flex-direction:column;gap:2px;margin-top:4px}
+  .nav a{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:10px;color:var(--sidebar-ink);text-decoration:none;cursor:pointer;font-size:13.5px}
+  .nav a .ic{width:18px;text-align:center;opacity:.9}
+  .nav a:hover{background:rgba(255,255,255,.06);color:#fff}
+  .nav a.active{background:var(--sidebar-active);color:#fff;font-weight:600}
+  .side .foot{margin-top:auto;padding:12px 10px;font-size:12px;color:#6b7punk;color:#707892;border-top:1px solid rgba(255,255,255,.07)}
+  /* 顶栏 */
+  .main{display:flex;flex-direction:column;min-width:0}
+  .top{display:flex;align-items:center;gap:16px;padding:14px 26px;background:var(--panel);border-bottom:1px solid var(--line)}
+  .top h1{font-size:16px;margin:0;font-weight:650}
+  .top .sp{flex:1}
+  .pill{display:inline-flex;align-items:center;gap:7px;background:#f0fdf4;color:var(--ok);border:1px solid #bbf7d0;padding:5px 11px;border-radius:999px;font-size:12.5px;font-weight:600}
+  .pill .dot{width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 3px #dcfce7}
+  .acct{display:flex;align-items:center;gap:9px;color:var(--sub);font-size:13px}
+  .acct .av{width:30px;height:30px;border-radius:50%;background:var(--brand-weak);color:var(--brand);display:grid;place-items:center;font-weight:700}
+  /* 内容 */
+  .content{padding:24px 26px;overflow:auto}
+  .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:22px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow)}
+  .card .k{color:var(--sub);font-size:12.5px}
+  .card .v{font-size:26px;font-weight:720;margin-top:6px}
+  .card .v small{font-size:13px;color:var(--sub);font-weight:500;margin-left:4px}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+  .ph{display:flex;align-items:center;gap:12px;padding:16px 18px;border-bottom:1px solid var(--line)}
+  .ph h2{font-size:15px;margin:0;font-weight:650}
+  .ph .sp{flex:1}
+  .search{display:flex;align-items:center;gap:8px;background:#f6f7fb;border:1px solid var(--line);border-radius:10px;padding:7px 11px;color:var(--sub);min-width:240px}
+  .search input{border:0;background:transparent;outline:0;width:100%;font-size:13.5px;color:var(--ink)}
+  .btn{border:0;border-radius:10px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer}
+  .btn.primary{background:var(--brand);color:#fff}
+  .btn.ghost{background:#f3f4f8;color:var(--ink)}
+  .btn.sm{padding:5px 10px;font-size:12px}
+  table{width:100%;border-collapse:collapse}
+  th,td{text-align:left;padding:12px 18px;border-bottom:1px solid var(--line);font-size:13.5px;vertical-align:top}
+  th{color:var(--sub);font-weight:600;font-size:12.5px;background:#fafbfe}
+  td .q{font-weight:600}
+  td .a{color:var(--sub);max-width:520px}
+  .tag{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11.5px;font-weight:600}
+  .tag.md{background:#eef2ff;color:#4338ca}
+  .tag.qq{background:#ecfeff;color:#0e7490}
+  .tag.learn{background:#fff7ed;color:#c2410c}
+  .row-act a{color:var(--brand);text-decoration:none;margin-right:12px;font-size:12.5px;cursor:pointer}
+  .row-act a.del{color:var(--danger)}
+  .section{display:none} .section.show{display:block}
+  .docgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;padding:18px}
+  .doc{border:1px solid var(--line);border-radius:12px;padding:15px}
+  .doc .t{font-weight:650;display:flex;align-items:center;gap:8px}
+  .doc .m{color:var(--sub);font-size:12.5px;margin-top:6px}
+  .draft{display:flex;gap:14px;padding:16px 18px;border-bottom:1px solid var(--line)}
+  .draft .body{flex:1}
+  .draft .body .q{font-weight:650} .draft .body .a{color:var(--sub);margin-top:4px}
+  .muted{color:var(--sub)} .groups{display:flex;flex-wrap:wrap;gap:8px;padding:4px 0}
+  .chk{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);padding:7px 12px;border-radius:10px;font-size:13px;cursor:pointer}
+  .chk input{accent-color:var(--brand)}
+  textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:11px;font:inherit;resize:vertical;min-height:92px}
+  /* 登录遮罩 */
+  .login{position:fixed;inset:0;background:linear-gradient(135deg,#eef1fe,#f4f6fb);display:grid;place-items:center;z-index:20}
+  .login .box{background:#fff;border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);padding:30px 30px 26px;width:340px;text-align:center}
+  .login .logo{width:46px;height:46px;border-radius:12px;margin:0 auto 14px;background:linear-gradient(135deg,#4f6ef2,#7c3aed);display:grid;place-items:center;color:#fff;font-size:22px}
+  .login h3{margin:0 0 4px} .login p{margin:0 0 18px;color:var(--sub);font-size:13px}
+  .login input{width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:10px;font:inherit;margin-bottom:12px}
+  .login .btn{width:100%}
+  .hintbar{margin:18px 0 0;padding:12px 16px;background:#fffbeb;border:1px solid #fde68a;border-radius:12px;color:#92400e;font-size:12.5px}
+</style>
+</head>
+<body>
+  <!-- 登录 -->
+  <div class="login" id="login" style="display:none">
+    <div class="box">
+      <div class="logo">🛎️</div>
+      <h3>qq-ai-kefu 客服控制台</h3>
+      <p>输入管理密码登录（.env 的 ADMIN_PASSWORD）</p>
+      <input type="password" placeholder="管理密码" value="••••••••"/>
+      <button class="btn primary" onclick="document.getElementById('login').style.display='none'">登录</button>
+    </div>
+  </div>
+
+  <div class="app">
+    <!-- 侧栏 -->
+    <aside class="side">
+      <div class="brand"><span class="logo">🛎️</span> qq-ai-kefu</div>
+      <nav class="nav" id="nav">
+        <a class="active" data-s="overview"><span class="ic">📊</span>概览</a>
+        <a data-s="entries"><span class="ic">✅</span>标准答案</a>
+        <a data-s="docs"><span class="ic">📚</span>资料库</a>
+        <a data-s="crawl"><span class="ic">🕸️</span>爬常见问题</a>
+        <a data-s="learn"><span class="ic">🖼️</span>截图学答法</a>
+        <a data-s="drafts"><span class="ic">📝</span>待审草稿 <span style="margin-left:auto;background:#e11d48;color:#fff;border-radius:999px;font-size:11px;padding:0 7px">3</span></a>
+        <a data-s="trusted"><span class="ic">🤝</span>自己人</a>
+        <a data-s="banned"><span class="ic">⛔</span>被封禁的人</a>
+        <a data-s="notice"><span class="ic">📢</span>群公告</a>
+      </nav>
+      <div class="foot">协议端 Rosmontis · OneBot v11<br/>v1.0 · 示例设计稿</div>
+    </aside>
+
+    <!-- 主区 -->
+    <div class="main">
+      <div class="top">
+        <h1 id="title">概览</h1>
+        <div class="sp"></div>
+        <span class="pill"><span class="dot"></span>协议端在线</span>
+        <div class="acct"><span class="av">管</span>超管 · 退出</div>
+      </div>
+      <div class="content">
+
+        <!-- 概览 -->
+        <section class="section show" data-s="overview">
+          <div class="cards">
+            <div class="card"><div class="k">标准答案</div><div class="v">147 <small>条</small></div></div>
+            <div class="card"><div class="k">资料块</div><div class="v">1006 <small>块 / 7 份</small></div></div>
+            <div class="card"><div class="k">今日问答</div><div class="v">38 <small>次</small></div></div>
+            <div class="card"><div class="k">待审草稿</div><div class="v" style="color:var(--danger)">3 <small>条</small></div></div>
+          </div>
+          <div class="panel">
+            <div class="ph"><h2>最近问答</h2><div class="sp"></div><span class="muted">命中线 0.78 · 资料线 0.49</span></div>
+            <table>
+              <thead><tr><th style="width:42%">问题</th><th>命中</th><th>群</th><th>时间</th></tr></thead>
+              <tbody>
+                <tr><td class="q">codex 沙盒连不上怎么办</td><td><span class="tag md">标准答案</span></td><td class="muted">售后群</td><td class="muted">12:41</td></tr>
+                <tr><td class="q">年付套餐额度怎么算</td><td><span class="tag md">标准答案</span></td><td class="muted">售前群</td><td class="muted">12:08</td></tr>
+                <tr><td class="q">能开发票吗 / 对公转账</td><td><span class="tag learn">资料命中</span></td><td class="muted">售后群</td><td class="muted">11:55</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- 标准答案 -->
+        <section class="section" data-s="entries">
+          <div class="panel">
+            <div class="ph">
+              <h2>标准答案</h2>
+              <span class="muted">147 条</span>
+              <div class="sp"></div>
+              <div class="search">🔍<input placeholder="搜问题 / 答案关键词"/></div>
+              <button class="btn primary">+ 新增</button>
+            </div>
+            <table>
+              <thead><tr><th style="width:26%">问题关键词</th><th style="width:44%">答案</th><th>来源</th><th>操作</th></tr></thead>
+              <tbody>
+                <tr><td class="q">退款政策</td><td class="a">7 天内未大量使用可申请全额退款，已用额度按比例扣除……</td><td><span class="tag md">知识库.md</span></td><td class="row-act"><a>编辑</a><a class="del">删除</a></td></tr>
+                <tr><td class="q">沙盒 MTU</td><td class="a">终端能用说明网络没问题，多半是沙盒 MTU 不合适，改成 1500 重试……</td><td><span class="tag qq">群内定</span></td><td class="row-act"><a>编辑</a><a class="del">删除</a></td></tr>
+                <tr><td class="q">首 token 时间</td><td class="a">指从发起请求到返回第一个 token 的耗时，受网络与模型负载影响……</td><td><span class="tag learn">复盘采纳</span></td><td class="row-act"><a>编辑</a><a class="del">删除</a></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- 资料库 -->
+        <section class="section" data-s="docs">
+          <div class="panel">
+            <div class="ph"><h2>资料库</h2><span class="muted">7 份 · 1006 块</span><div class="sp"></div><button class="btn ghost">↻ 重新入库</button><button class="btn primary">+ 上传资料</button></div>
+            <div class="docgrid">
+              <div class="doc"><div class="t">📦 套餐与定价 plans.md</div><div class="m">214 块 · 更新 11-09</div></div>
+              <div class="doc"><div class="t">💸 退款说明 refund.md</div><div class="m">36 块 · 更新 11-08</div></div>
+              <div class="doc"><div class="t">📊 群费率 group-rates.md</div><div class="m">52 块 · 更新 11-10</div></div>
+              <div class="doc"><div class="t">🧮 额度换算 plan-quota-math.md</div><div class="m">41 块 · 更新 11-07</div></div>
+              <div class="doc"><div class="t">🛰️ 模型广场 models-plaza.md</div><div class="m">388 块 · 每日自动</div></div>
+              <div class="doc"><div class="t">📄 官方文档 lmuai-docs.txt</div><div class="m">275 块 · 抓取</div></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 待审草稿 -->
+        <section class="section" data-s="drafts">
+          <div class="panel">
+            <div class="ph"><h2>待审草稿</h2><span class="muted">夜间复盘起草，采纳后入库</span><div class="sp"></div><button class="btn ghost">全部驳回</button></div>
+            <div class="draft"><div class="body"><div class="q">Q：claude 和 codex 哪个适合写长文？</div><div class="a">A：长文建议用 claude（上下文更稳）；codex 更偏代码补全……</div></div><div><button class="btn primary sm">采纳</button> <button class="btn ghost sm">驳回</button></div></div>
+            <div class="draft"><div class="body"><div class="q">Q：套餐能中途升级吗？</div><div class="a">A：可以，升级按差价补，额度即时生效，周期不变……</div></div><div><button class="btn primary sm">采纳</button> <button class="btn ghost sm">驳回</button></div></div>
+            <div class="draft"><div class="body"><div class="q">Q：掉线了消息会丢吗？</div><div class="a">A：不会，重连后会补收离线消息……</div></div><div><button class="btn primary sm">采纳</button> <button class="btn ghost sm">驳回</button></div></div>
+          </div>
+        </section>
+
+        <!-- 截图学答 -->
+        <section class="section" data-s="learn">
+          <div class="panel">
+            <div class="ph"><h2>截图学答法</h2><span class="muted">上传聊天截图 → 抽成对话 → 进待审草稿，采纳才生效</span></div>
+            <div style="padding:28px 18px"><div style="border:2px dashed var(--line);border-radius:14px;padding:40px;text-align:center;color:var(--sub)">🖼️ 把聊天截图拖到这里，或点击上传<br/><span style="font-size:12.5px">抽取出的问答会进「待审草稿」</span></div></div>
+          </div>
+        </section>
+
+        <!-- 爬常见问题 -->
+        <section class="section" data-s="crawl">
+          <div class="panel">
+            <div class="ph"><h2>爬常见问题</h2><div class="sp"></div><button class="btn primary">+ 添加来源</button></div>
+            <table><thead><tr><th>来源 URL</th><th>上次抓取</th><th>条数</th><th>操作</th></tr></thead>
+              <tbody>
+                <tr><td class="q">docs.example.com/faq</td><td class="muted">11-12 07:23</td><td>42</td><td class="row-act"><a>立即抓取</a><a class="del">移除</a></td></tr>
+                <tr><td class="q">community.example.com/top</td><td class="muted">11-12 07:23</td><td>18</td><td class="row-act"><a>立即抓取</a><a class="del">移除</a></td></tr>
+              </tbody></table>
+          </div>
+        </section>
+
+        <!-- 自己人 -->
+        <section class="section" data-s="trusted">
+          <div class="panel">
+            <div class="ph"><h2>自己人</h2><span class="muted">名单里的号在群里回客户的话，夜间复盘会当「人工客服答法」学成标准答案；不在名单的只当问题</span><div class="sp"></div><button class="btn primary">+ 加自己人</button></div>
+            <table><thead><tr><th>QQ 号</th><th>备注</th><th>来源</th><th>操作</th></tr></thead>
+              <tbody>
+                <tr><td class="q">10000000002</td><td>超管</td><td><span class="tag md">固定 · .env TRUSTED</span></td><td class="muted">不可改</td></tr>
+                <tr><td class="q">2000000011</td><td>客服 · 小王</td><td><span class="tag qq">手动添加</span></td><td class="row-act"><a class="del">移除</a></td></tr>
+                <tr><td class="q">2000000012</td><td>技术支持 · 阿强</td><td><span class="tag qq">手动添加</span></td><td class="row-act"><a class="del">移除</a></td></tr>
+              </tbody></table>
+          </div>
+        </section>
+
+        <!-- 被封禁的人 -->
+        <section class="section" data-s="banned">
+          <div class="panel">
+            <div class="ph"><h2>被封禁的人</h2><span class="muted">超管踢出群的自动记入，以后申请任何群都自动拒（回「请输入正确订单号」，不告知、不私聊）</span><div class="sp"></div><button class="btn ghost">+ 手动封号</button></div>
+            <table><thead><tr><th>QQ 号</th><th>备注</th><th>来源</th><th>在哪个群被踢</th><th>操作</th></tr></thead>
+              <tbody>
+                <tr><td class="q">3000000021</td><td>群里发广告</td><td><span class="tag learn">被你踢出群</span></td><td class="muted">售后群</td><td class="row-act"><a>解封</a></td></tr>
+                <tr><td class="q">3000000022</td><td>重复骚扰客户</td><td><span class="tag qq">手动加的</span></td><td class="muted">—</td><td class="row-act"><a>解封</a></td></tr>
+                <tr><td class="q">3000000023</td><td>历史踢出</td><td><span class="tag md">旧日志导入</span></td><td class="muted">售前群</td><td class="row-act"><a>解封</a></td></tr>
+              </tbody></table>
+          </div>
+        </section>
+
+        <!-- 群公告 -->
+        <section class="section" data-s="notice">
+          <div class="panel">
+            <div class="ph"><h2>群公告</h2><span class="muted">选群发布 / 传文件 / @全体</span></div>
+            <div style="padding:18px">
+              <div class="muted" style="margin-bottom:8px">选择群</div>
+              <div class="groups">
+                <label class="chk"><input type="checkbox" checked/> 售前群</label>
+                <label class="chk"><input type="checkbox" checked/> 售后群</label>
+                <label class="chk"><input type="checkbox"/> 日报群</label>
+                <label class="chk"><input type="checkbox"/> 内测群</label>
+              </div>
+              <div class="muted" style="margin:14px 0 8px">公告内容</div>
+              <textarea placeholder="输入公告内容……">各位好，本周维护时间为周日 02:00-04:00，期间可能短暂影响答复，敬请谅解。</textarea>
+              <div style="margin-top:12px;display:flex;align-items:center;gap:14px">
+                <label class="chk"><input type="checkbox"/> @全体成员</label>
+                <div class="sp" style="flex:1"></div>
+                <button class="btn ghost">传群文件</button>
+                <button class="btn primary">发布公告</button>
+              </div>
+              <div class="hintbar">提示：@全体 每个群每天有次数上限；群公告建议用管理员本人发，避免机器人号频繁操作。</div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </div>
+  </div>
+<script>
+  const nav=document.getElementById('nav');
+  const title=document.getElementById('title');
+  const names={overview:'概览',entries:'标准答案',docs:'资料库',crawl:'爬常见问题',learn:'截图学答法',drafts:'待审草稿',trusted:'自己人',banned:'被封禁的人',notice:'群公告'};
+  nav.addEventListener('click',e=>{const a=e.target.closest('a');if(!a)return;
+    [...nav.children].forEach(x=>x.classList.remove('active'));a.classList.add('active');
+    const s=a.dataset.s;title.textContent=names[s];
+    document.querySelectorAll('.section').forEach(x=>x.classList.toggle('show',x.dataset.s===s));
+  });
+</script>
+</body>
+</html>
