@@ -20,6 +20,9 @@ WORKDIR /app
 COPY bot/ bot/
 COPY scripts/ scripts/
 COPY pyproject.toml ./
+# 控制台静态文件。console/dist 是 build 产物、不进 git，这行要求构建镜像之前先在宿主机
+# 跑一遍：cd console && pnpm build。没编过的话 dist 不存在，COPY 会直接失败。
+COPY console/dist/ console/dist/
 
 # data/ knowledge/ logs/ .env 都由 compose 挂进来（见 docker-compose.yml），这里不放
 CMD ["python", "-m", "bot"]

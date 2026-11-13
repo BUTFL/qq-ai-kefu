@@ -1,0 +1,17 @@
+# 构建上下文里只需要 console/dist（pnpm build 的产物）。
+# 源码、依赖、缓存都不进镜像：镜像里 CONSOLE_DIST=/app/console/dist，
+# 而 dist 不进 git，所以构建镜像之前要现在宿主机 cd console && pnpm build。
+console/node_modules
+console/src
+console/*
+!console/dist
+!console/dist/**
+
+# 不往镜像里塞本地运行时的东西
+.venv
+.git
+.pytest_cache
+data
+logs
+backup
+__pycache__

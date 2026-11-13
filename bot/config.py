@@ -246,9 +246,10 @@ class Settings:
     # 要开之前先按那套实测跑一轮：同一个问题连打十几次，看有没有哪次开头少字
     llm_thinking: bool = False
 
-    # ---- 知识库接口（bot/admin_web.py，页面在 6099 左边栏）----
+    # ---- 知识库接口（bot/admin_web.py，新控制台也由它托管）----
     # 只绑 127.0.0.1，跟 NapCat WebUI 同一个理由：能改答案等于能替机器人对客户说话。
-    # 不另设口令：请求带 6099 的登录凭证，转手问 NapCat 真假（bot/napcat_auth.py）
+    # 控制台自己的登录密码从 ADMIN_PASSWORD 读；**不给默认密码**，留空就禁止登录（/api/* 全 503）
+    admin_password: str = ""
     admin_port: int = 8090
     # 监听地址。直接跑在宿主机上就是 127.0.0.1；跑在容器里得是 0.0.0.0，
     # 否则 compose 的端口映射转不进来 —— 那时「只给本机」由 compose 的 127.0.0.1:8090 映射来保证。
@@ -469,6 +470,7 @@ class Settings:
             reply_gap_max=_float(env.get("REPLY_GAP_MAX", ""), "REPLY_GAP_MAX", 2.0, lo=0.0, hi=30.0),
             reply_single_max=_int(env.get("REPLY_SINGLE_MAX", ""), "REPLY_SINGLE_MAX", 90, lo=0, hi=2000),
             llm_thinking=env.get("LLM_THINKING", "false").strip().lower() in _TRUE,
+            admin_password=env.get("ADMIN_PASSWORD", "").strip(),
             admin_port=_int(env.get("ADMIN_PORT", ""), "ADMIN_PORT", 8090, lo=1024, hi=65535),
             admin_host=env.get("ADMIN_HOST", "").strip() or "127.0.0.1",
             vision_model=env.get("VISION_MODEL", "qwen3.7-plus").strip() or "qwen3.7-plus",
