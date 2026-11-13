@@ -1158,9 +1158,21 @@ class KBStore:
             ).fetchall()
             return [(r["question"], int(r["n"])) for r in rows]
 
+    def stats(self) -> tuple[int, int, int, str]:
+        """一次查齐：资料份数、块数、标准答案条数，以及启动日志那行摘要。
+
+        `/api/stats` 和启动日志都要这几个数，放在一个事务里查，别让一次请求打好几遍库。
+        """
+        with self._tx() as db:
+            docs = int(db.execute("SELECT COUNT(*) c FROM docs").fetchone()["c"])
+            chunks = int(db.execute("SELECT COUNT(*) c FROM chunks").fetchone()["c"])
+            entries = int(db.execute("SELECT COUNT(*) c FROM kb_entries").fetchone()["c"])
+        line = f"资料 {docs} 份 / {chunks} 块，标准答案 {entries} 条"
+        return docs, chunks, entries, line
+
     def stats_line(self) -> str:
         """启动日志用的一行摘要。"""
-        return f"资料 {len(self.docs())} 份 / {self.chunk_count()} 块，标准答案 {self.entry_count()} 条"
+        return self.stats()[3]
 
     # ---- 群消息（只留一天，见 group_msgs 建表那段）----
 

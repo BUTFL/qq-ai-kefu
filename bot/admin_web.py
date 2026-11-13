@@ -22,18 +22,20 @@
   跑在容器里时绑 0.0.0.0（`ADMIN_HOST`），由 compose 只映射到宿主机 127.0.0.1:8090，Host 校验不变。
 - 局域网访问（2026-09-29，`scripts/lan_proxy.py`）：Host 和 CORS 再认 `LAN_HOSTS` 里**列出来的**地址，
   不是什么都认。凭证那一层不变。
-- 不另设口令，跟 6099 共用一套登录：请求带 6099 发的凭证（`Authorization: Bearer`），
-  转手问 NapCat 真假（`napcat_auth.py`）。6099 登出/过期/NapCat 重启，这边一起失效。
+- 控制台自己的登录：`.env` 的 `ADMIN_PASSWORD` 换进程内 token（`console_auth.py`），
+  请求带 `Authorization: Bearer`。没配密码时所有 `/api/*` 回 503，不另给默认口令。
 - 页面在 6099、接口在 8090，属于跨域，CORS 只放行 6099 那几个本机来源。
   别的网页既拿不到凭证，也发不了带 Authorization 的跨域请求（预检过不了）。
+- 非 `/api/` 的路径发 `console/dist/` 里的静态文件，没命中就发 `index.html`（SPA 兜底）。
 """
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import uuid
 from datetime import datetime
-from urllib.parse import urlsplit
+from urllib.parse import unquote, urlsplit
 from pathlib import Path
 from collections.abc import Awaitable, Callable
 from typing import Any
@@ -44,8 +46,8 @@ from . import announce
 from .config import Settings
 from .kb import crawl, learn_chat, review, sync, uploads, webpage
 from .kb.llm import LLM, LLMError
+from .console_auth import ConsoleAuth, LoginThrottled
 from .kb.store import KB_IMAGE_DIR, KBStore
-from .napcat_auth import NapCatAuth, NapCatDown
 from .onebot import ApiError, OneBotClient
 from .store import Store
 
@@ -54,6 +56,8 @@ log = logging.getLogger(__name__)
 LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
 MAX_UPLOAD = 30 * 1024 * 1024
 IMAGE_SUFFIXES = set(uploads.IMAGE_MIME)
+# 新控制台编出来的静态文件（console/ 不在 git 里，由前端同事 pnpm build 生成）
+CONSOLE_DIST = Path(__file__).resolve().parent.parent / "console" / "dist"
 
 
 def _json(data: Any, status: int = 200) -> web.Response:
@@ -73,8 +77,9 @@ def _allowed_origins(webui_url: str, lan_hosts: frozenset[str] = frozenset()) ->
 
 class AdminApp:
     def __init__(
-        self, settings: Settings, store: KBStore, llm: LLM, auth: NapCatAuth | None = None, *,
+        self, settings: Settings, store: KBStore, llm: LLM, auth: ConsoleAuth | None = None, *,
         rewrite_llm: LLM | None = None, client: OneBotClient | None = None, approval_store: Store | None = None,
+        console_dist: Path | None = None,
     ) -> None:
         self.settings = settings
         self.store = store
@@ -85,8 +90,10 @@ class AdminApp:
         self.crawler = crawl.Crawler(
             store, llm, rewrite_llm=self.rewrite_llm, vision_model=settings.crawl_vision_model, hit_score=settings.kb_hit_score,
         )
-        # 离线用例塞一个假的进来
-        self.auth = auth or NapCatAuth(settings.webui_url)
+        # 离线用例塞一个假的进来。密码只在这里交给鉴权，日志不打印
+        self.auth = auth or ConsoleAuth(settings.admin_password)
+        # 静态文件目录。测试可以指到临时目录，生产默认 console/dist
+        self.console_dist = console_dist if console_dist is not None else CONSOLE_DIST
         # CORS 看的是浏览器地址栏里 6099 的来源，不是机器人去连 NapCat 的地址：
         # 容器里后者是 http://napcat:6099，但浏览器永远是从 127.0.0.1:6099 打开的
         self.origins = _allowed_origins(settings.webui_public_url or settings.webui_url, settings.lan_hosts)
@@ -100,7 +107,7 @@ class AdminApp:
         # 入群审批的 Store（管被封禁用户）
         self.approval_store = approval_store
 
-    # ---- 中间件：本机 Host + CORS + 6099 凭证 ----
+    # ---- 中间件：本机 Host + CORS + 控制台 token + 静态文件 ----
 
     def _cors(self, request: web.Request, resp: web.StreamResponse) -> web.StreamResponse:
         origin = request.headers.get("Origin", "")
@@ -110,13 +117,51 @@ class AdminApp:
             resp.headers["Access-Control-Expose-Headers"] = "Content-Disposition"
         return resp
 
+    @staticmethod
+    def _bearer(request: web.Request) -> str:
+        auth = request.headers.get("Authorization", "")
+        return auth[7:] if auth.startswith("Bearer ") else ""
+
+    async def _serve_console(self, request: web.Request) -> web.StreamResponse:
+        """发 console/dist 里的文件；没命中就发 index.html（SPA 兜底）。"""
+        # 静态托管只认 GET/HEAD：POST / 或 DELETE /assets/x.js 不能照样把文件吐出去
+        if request.method not in ("GET", "HEAD"):
+            return web.Response(status=405, text="只支持 GET 和 HEAD")
+        # 先按原始路径解一次码，再 resolve 跟 dist 比对：挡 ../、%2e%2e 和指向外面的软链接
+        rel = unquote(request.raw_path.split("?", 1)[0]).lstrip("/")
+        # //api/stats、/API/stats 这种：路由只在 /api/ 下，判错会掉到静态兜底发 index.html，
+        # 前端拿到 HTML 200 只会报成莫名的 JSON 解析失败，这里直接 404
+        if rel.lower().startswith("api/"):
+            return web.Response(status=404, text="接口不存在")
+        root = self.console_dist.resolve()
+        if not root.is_dir():
+            return web.Response(status=404, text="控制台还没编译，先 pnpm build")
+        try:
+            target = (root / rel).resolve()
+            if not target.is_relative_to(root):
+                return web.Response(status=403, text="访问路径不对")
+            if target.is_file():
+                return web.FileResponse(target)
+            index = (root / "index.html").resolve()
+            if not index.is_relative_to(root) or not index.is_file():
+                return web.Response(status=404, text="控制台还没编译，先 pnpm build")
+        except (OSError, ValueError):
+            return web.Response(status=403, text="访问路径不对")
+        return web.FileResponse(index)
+
     @web.middleware
     async def guard(self, request: web.Request, handler):  # type: ignore[no-untyped-def]
         host = (request.host or "").rsplit(":", 1)[0].strip("[]").lower()
         if host not in self.hosts:
             return web.Response(status=403, text="只允许本机和 LAN_HOSTS 里的地址访问")
         if not request.path.startswith("/api/"):
-            return web.Response(status=404)
+            # 静态文件也要过 Host 白名单（上面已经挡了）
+            return await self._serve_console(request)
+        # 没配密码优先于 OPTIONS：预检也不能回 204 假装能用
+        if not self.auth.configured:
+            return self._cors(request, _json(
+                {"error": "没配 ADMIN_PASSWORD，控制台用不了", "code": "no-password"}, 503,
+            ))
         if request.method == "OPTIONS":
             # 预检：带 Authorization 的跨域请求浏览器会先问这一下
             if request.headers.get("Origin", "") not in self.origins:
@@ -127,18 +172,16 @@ class AdminApp:
                 "Access-Control-Max-Age": "600",
             })
             return self._cors(request, resp)
-        auth = request.headers.get("Authorization", "")
-        cred = auth[7:] if auth.startswith("Bearer ") else ""
-        try:
-            ok = await self.auth.check(cred)
-        except NapCatDown as e:
-            return self._cors(request, _err(f"{e}，验不了登录", 503))
-        if not ok:
-            return self._cors(request, _err("没登录或登录过期了，重新登录 6099", 401))
+        # 登录本身不验 token，其它 /api/* 都要
+        if request.path != "/api/console/login" and not self.auth.check(self._bearer(request)):
+            return self._cors(request, _err("没登录或登录过期了", 401))
         try:
             resp = await handler(request)
         except web.HTTPException as e:
             resp = e
+        except Exception:  # 兜底：handler 里没接住的异常也要带 CORS，别让浏览器表现成「连不上」
+            log.exception("处理 %s %s 时出错", request.method, request.path)
+            resp = _json({"error": "后端出错了，看日志"}, 500)
         return self._cors(request, resp)
 
     # ---- 资料 ----
@@ -201,7 +244,7 @@ class AdminApp:
         """输一个网址，抓那一页入库（`kb/webpage.py`）。同一个网址再抓一次 = 更新那一份"""
         try:
             url = str((await request.json()).get("url", "")).strip()
-        except ValueError:
+        except (ValueError, LookupError):
             return _err("请求格式不对")
         if not url:
             return _err("网址是空的")
@@ -331,8 +374,42 @@ class AdminApp:
             (KB_IMAGE_DIR / fname).unlink(missing_ok=True)
         return _json({"ok": bool(fname)})
 
+    # ---- 控制台登录（鉴权在 guard 里，登录本身不验 token）----
+
+    async def console_login(self, request: web.Request) -> web.Response:
+        try:
+            # request.text() 遇到不认识的 charset 会抛 LookupError（不是 ValueError）
+            body = json.loads(await request.text())
+        except (ValueError, TypeError, LookupError):
+            return _err("请求格式不对")
+        password = body.get("password") if isinstance(body, dict) else None
+        if not isinstance(password, str):
+            password = ""
+        try:
+            pair = await self.auth.login(password, ip=request.remote or "")
+        except LoginThrottled:
+            return _err("试太多次了，等一会儿", 429)
+        if pair is None:
+            return _err("密码不对", 401)
+        token, expires = pair
+        return _json({"token": token, "expires_at": expires.isoformat()})
+
+    async def console_me(self, request: web.Request) -> web.Response:
+        expires = self.auth.expires_at(self._bearer(request))
+        if expires is None:
+            return _err("没登录或登录过期了", 401)
+        return _json({"ok": True, "expires_at": expires.isoformat()})
+
+    async def console_logout(self, request: web.Request) -> web.Response:
+        self.auth.logout(self._bearer(request))
+        return _json({"ok": True})
+
     async def stats(self, request: web.Request) -> web.Response:
-        return _json({"line": await asyncio.to_thread(self.store.stats_line)})
+        def read() -> dict[str, Any]:
+            # 一次拿齐，别让 stats_line() 和三个 count 各查一遍库
+            docs, chunks, entries, line = self.store.stats()
+            return {"line": line, "docs": docs, "chunks": chunks, "entries": entries}
+        return _json(await asyncio.to_thread(read))
 
     # ---- 夜间复盘的待审草稿（逻辑在 kb/review.py，跟私聊 /采纳 /不要 共用）----
 
@@ -368,7 +445,7 @@ class AdminApp:
         did = int(request.match_info["id"])
         try:
             body = await request.json() if request.can_read_body else {}
-        except ValueError:
+        except (ValueError, LookupError):
             return _err("请求格式不对")
         aliases = body.get("aliases")
         if isinstance(aliases, list):
@@ -422,7 +499,7 @@ class AdminApp:
         """（改过的）几段对话 → 待审草稿，原样回给页面就地审。采纳 / 不要走 /api/drafts/{id}/... 那两个"""
         try:
             body = await request.json()
-        except ValueError:
+        except (ValueError, LookupError):
             return _err("请求格式不对")
         texts = body.get("texts") if isinstance(body, dict) else None
         if not isinstance(texts, list) or not all(isinstance(t, str) for t in texts):
@@ -442,7 +519,7 @@ class AdminApp:
     async def crawl_start(self, request: web.Request) -> web.Response:
         try:
             body = await request.json()
-        except ValueError:
+        except (ValueError, LookupError):
             return _err("请求格式不对")
         url = str(body.get("url", "")).strip()
         try:
@@ -465,7 +542,7 @@ class AdminApp:
         """接着爬 / 重试。页数上限可选，不传就用这个任务原来的"""
         try:
             body = await request.json() if request.can_read_body else {}
-        except ValueError:
+        except (ValueError, LookupError):
             body = {}
         pages = body.get("max_pages")
         try:
@@ -685,6 +762,9 @@ class AdminApp:
     def build(self) -> web.Application:
         app = web.Application(middlewares=[self.guard], client_max_size=MAX_UPLOAD)
         r = app.router
+        r.add_post("/api/console/login", self.console_login)
+        r.add_get("/api/console/me", self.console_me)
+        r.add_post("/api/console/logout", self.console_logout)
         r.add_get("/api/stats", self.stats)
         r.add_get("/api/docs", self.list_docs)
         r.add_get("/api/docs/chunks", self.doc_chunks)
@@ -747,4 +827,3 @@ async def serve(
         await asyncio.Event().wait()
     finally:
         await runner.cleanup()
-        await admin.auth.close()
